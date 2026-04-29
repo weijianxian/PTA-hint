@@ -83,7 +83,7 @@ const DEFAULT_API_CONFIG = {
     apiKey: '',
     model: 'gpt-4o-mini',
     systemPrompt: '你是一个 PTA 编程题解题助手。根据题目和已有代码，给出下一步解题提示。严格要求：不要修改已有代码的任何部分，只能在已有代码的基础上添加注释来提示下一步思路。注释应该简洁明了，指出下一步该做什么、需要注意什么。输出时保留所有原有代码，仅插入注释。',
-    userPrompt: '题目描述:\n{question}\n\n目标语言: {target_language}\n\n已有代码:\n{current_answer}\n\n请分析题目和已有代码，给出下一步的解题提示。只在已有代码中添加注释，不要修改任何原有代码。'
+    userPrompt: '题目描述:\n{question}\n\n目标语言: {target_language}\n\n已有代码:\n{current_answer}\n\n请分析题目和已有代码，给出下一步的解题提示。只在已有代码中添加注释，不要修改任何原有代码，只提示，不答题。'
 };
 
 // 模板变量说明
@@ -408,10 +408,15 @@ const SETTINGS_IDS = {
                     result += ann.textContent;
                     continue;
                 }
-                // 回退：取 katex-mathml，跳过 katex-html (aria-hidden)
+                // 回退：取 katex-mathml 中的 mrow（避免 fallback 文本重复）
                 const mathml = node.querySelector('.katex-mathml');
                 if (mathml) {
-                    result += mathml.textContent;
+                    const mrow = mathml.querySelector('mrow');
+                    if (mrow) {
+                        result += mrow.textContent;
+                    } else {
+                        result += mathml.textContent;
+                    }
                     continue;
                 }
             }
