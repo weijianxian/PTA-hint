@@ -104,27 +104,6 @@ const SETTINGS_IDS = {
     userPrompt: 'pta-setting-user-prompt'
 };
 
-// 硬编码测试答案
-const HARDCODED_ANSWER = `from collections import deque
-
-N = int(input())
-passengers = deque(map(int, input().split()))
-luggage = 1
-time = 0
-total_wait = 0
-
-while passengers:
-    time += 1
-    p = passengers.popleft()
-    if p == luggage:
-        total_wait += time - 1
-        luggage += 1
-    else:
-        passengers.append(p)
-
-avg = total_wait / N
-print(f"{time} {avg:.1f}")`;
-
 // ==================== 脚本主体 ====================
 
 (function() {
@@ -153,6 +132,29 @@ print(f"{time} {avg:.1f}")`;
         }
         #pta-reader-btn:hover {
             background: #357ABD;
+            transform: scale(1.1);
+        }
+        #pta-ai-btn {
+            position: fixed;
+            right: 20px;
+            bottom: 148px;
+            z-index: 99999;
+            background: #e8a838;
+            color: #1e1e1e;
+            border: none;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #pta-ai-btn:hover {
+            background: #d49520;
             transform: scale(1.1);
         }
         #pta-reader-modal {
@@ -730,6 +732,13 @@ print(f"{time} {avg:.1f}")`;
         btn.title = '提取题目为 Markdown';
         document.body.appendChild(btn);
 
+        // AI 生成悬浮按钮
+        const aiBtn = document.createElement('button');
+        aiBtn.id = 'pta-ai-btn';
+        aiBtn.innerHTML = '🤖';
+        aiBtn.title = 'AI 生成代码';
+        document.body.appendChild(aiBtn);
+
         // 设置按钮
         const settingsBtn = document.createElement('button');
         settingsBtn.id = 'pta-settings-btn';
@@ -755,8 +764,6 @@ print(f"{time} {avg:.1f}")`;
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="${UI_IDS.cancelBtn}">取消</button>
-                <button class="btn btn-warning" id="pta-write-btn">写入答案</button>
-                <button class="btn btn-primary" id="pta-ai-btn">AI 生成</button>
                 <button class="btn btn-primary" id="${UI_IDS.copyBtn}">复制 Markdown</button>
             </div>
         `;
@@ -829,27 +836,18 @@ print(f"{time} {avg:.1f}")`;
             closeSettings();
         });
 
-        // 写入硬编码答案
-        document.getElementById('pta-write-btn').addEventListener('click', () => {
-            if (insertAnswer(HARDCODED_ANSWER)) {
-                closeModal();
-            }
-        });
-
         // AI 生成按钮
-        document.getElementById('pta-ai-btn').addEventListener('click', () => {
-            const aiBtn = document.getElementById('pta-ai-btn');
-            const problemText = document.getElementById(UI_IDS.content).textContent;
-            if (!problemText.trim()) {
-                alert('请先提取题目');
+        aiBtn.addEventListener('click', () => {
+            const problemText = extractProblem();
+            if (!problemText || !problemText.trim()) {
+                alert('未找到题目内容');
                 return;
             }
-            aiBtn.textContent = '生成中...';
+            aiBtn.innerHTML = '⏳';
             aiBtn.disabled = true;
             generateAnswer(problemText, (success) => {
-                aiBtn.textContent = 'AI 生成';
+                aiBtn.innerHTML = '🤖';
                 aiBtn.disabled = false;
-                if (success) closeModal();
             });
         });
 
