@@ -82,8 +82,8 @@ const DEFAULT_API_CONFIG = {
     endpoint: 'https://api.openai.com/v1/chat/completions',
     apiKey: '',
     model: 'gpt-4o-mini',
-    systemPrompt: '你是一个 PTA 编程题解题助手。直接输出可提交的代码，不要解释，不要 markdown 代码围栏。',
-    userPrompt: '题目描述:\n{question}\n\n目标语言: {target_language}\n\n请生成可提交的代码。'
+    systemPrompt: '你是一个 PTA 编程题解题助手。根据题目和已有代码，给出下一步解题提示。严格要求：不要修改已有代码的任何部分，只能在已有代码的基础上添加注释来提示下一步思路。注释应该简洁明了，指出下一步该做什么、需要注意什么。输出时保留所有原有代码，仅插入注释。',
+    userPrompt: '题目描述:\n{question}\n\n目标语言: {target_language}\n\n已有代码:\n{current_answer}\n\n请分析题目和已有代码，给出下一步的解题提示。只在已有代码中添加注释，不要修改任何原有代码。'
 };
 
 // 模板变量说明
@@ -91,6 +91,7 @@ const TEMPLATE_VARS = '{question} = 题目内容 | {target_language} = 编程语
 
 // GM_setValue 键名
 const API_CONFIG_KEY = 'pta_api_config';
+const AI_WARN_IGNORED_KEY = 'pta_ai_warn_ignored';
 
 // 设置面板 UI ID
 const SETTINGS_IDS = {
@@ -333,6 +334,27 @@ const SETTINGS_IDS = {
             justify-content: flex-end;
             gap: 10px;
             margin-top: 20px;
+        }
+        #pta-warn-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100002;
+            background: #1e1e1e;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            width: 380px;
+            max-width: 90vw;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
         }
     `);
 
@@ -769,6 +791,22 @@ const SETTINGS_IDS = {
         `;
         document.body.appendChild(modal);
 
+        // AI 警告对话框
+        const warnModal = document.createElement('div');
+        warnModal.id = 'pta-warn-modal';
+        warnModal.innerHTML = `
+            <div style="padding:24px;">
+                <h3 style="margin:0 0 12px;color:#e8a838;font-size:16px;">⚠ 警告</h3>
+                <p style="margin:0 0 20px;color:#ccc;font-size:14px;line-height:1.5;">AI 生成会清除答题区现有内容，是否继续？</p>
+                <div style="display:flex;justify-content:flex-end;gap:10px;">
+                    <button class="btn btn-secondary" id="pta-warn-cancel">取消</button>
+                    <button class="btn btn-secondary" id="pta-warn-ignore">忽略</button>
+                    <button class="btn btn-danger" id="pta-warn-confirm">确定</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(warnModal);
+
         // 设置模态框
         const settingsModal = document.createElement('div');
         settingsModal.id = SETTINGS_IDS.modal;
@@ -834,10 +872,36 @@ const SETTINGS_IDS = {
         overlay.addEventListener('click', () => {
             closeModal();
             closeSettings();
+            closeWarnModal();
         });
 
-        // AI 生成按钮
-        aiBtn.addEventListener('click', () => {
+        // AI 警告对话框事件
+        const showWarnModal = () => {
+            warnModal.style.display = 'block';
+            overlay.style.display = 'block';
+        };
+        const closeWarnModal = () => {
+            warnModal.style.display = 'none';
+            overlay.style.display = 'none';
+        };
+
+        document.getElementById('pta-warn-cancel').addEventListener('click', closeWarnModal);
+
+        document.getElementById('pta-warn-ignore').addEventListener('click', () => {
+            GM_setValue(AI_WARN_IGNORED_KEY, true);
+            closeWarnModal();
+            // 执行 AI 生成
+            doAiGenerate();
+        });
+
+        document.getElementById('pta-warn-confirm').addEventListener('click', () => {
+            closeWarnModal();
+            // 执行 AI 生成
+            doAiGenerate();
+        });
+
+        // AI 生成逻辑
+        function doAiGenerate() {
             const problemText = extractProblem();
             if (!problemText || !problemText.trim()) {
                 alert('未找到题目内容');
@@ -849,6 +913,16 @@ const SETTINGS_IDS = {
                 aiBtn.innerHTML = '🤖';
                 aiBtn.disabled = false;
             });
+        }
+
+        // AI 生成按钮
+        aiBtn.addEventListener('click', () => {
+            const ignored = GM_getValue(AI_WARN_IGNORED_KEY, false);
+            if (ignored) {
+                doAiGenerate();
+            } else {
+                showWarnModal();
+            }
         });
 
         // 复制按钮
