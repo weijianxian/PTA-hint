@@ -88,32 +88,8 @@
 - **数学公式**：KaTeX（从 `<annotation>` 提取，避免 mathml/html 重复）
 - **API**：任何 OpenAI 兼容格式的接口
 
-## 技术细节
 
-### DOM → Markdown 转换
+## 致谢
 
-递归遍历题目容器的子元素，按标签类型分发处理：
-
-- `h1`-`h6` → `# ... ######`
-- `p` → 递归处理内联元素
-- `ul`/`ol` → `- ` / `1. `
-- `table` → GFM 表格语法
-- `div` → 判断是否为叶子代码块（`data-code`、`.cm-editor`），是则提取代码，否则递归子元素
-- `.katex` → 从 `annotation` 取 LaTeX 源
-
-### CodeMirror 6 读写
-
-- **读取**：查询 `.cm-line` 元素，逐行取 `textContent`，拼接为完整代码
-- **写入**：`focus()` → `execCommand('selectAll')` → `execCommand('insertText')`，触发 CM6 的输入事件处理
-
-## 项目结构
-
-```
-pta-problem-reader.user.js   # 油猴脚本主体
-```
-
-单文件，无构建步骤，无依赖。
-
-## License
-
-随便用。
+- 小米 MiMo — 感谢小米 MiMo 100T Token 计划提供的算力支持，本项目的 AI 生成功能基于此开发调试
+- 其他开源项目和社区的贡献者们
